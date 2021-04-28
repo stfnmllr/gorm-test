@@ -34,7 +34,7 @@ func initDB(dsn, schemaName, tableName string) {
 	if _, err := db.Exec(fmt.Sprintf("create schema %s", driver.Identifier(schemaName))); err != nil {
 		log.Fatal(err)
 	}
-	if _, err := db.Exec(fmt.Sprintf("create table %s.%s (msg_id varchar(30), action_name varchar(30), msg_bytes blob)", driver.Identifier(schemaName), driver.Identifier(tableName))); err != nil {
+	if _, err := db.Exec(fmt.Sprintf("create table %s.%s (msg_id varchar(50), action_name varchar(50), msg_bytes blob)", driver.Identifier(schemaName), driver.Identifier(tableName))); err != nil {
 		log.Fatal(err)
 	}
 
@@ -46,7 +46,7 @@ func initDB(dsn, schemaName, tableName string) {
 	nullLob := &driver.NullLob{Lob: new(driver.Lob)}
 	nullLob.Lob.SetReader(bytes.NewBuffer([]byte("action 1")))
 
-	if _, err := stmt.Exec("1", "A1", nullLob); err != nil {
+	if _, err := stmt.Exec("00505683-b621-1eeb-a8fb-24069a1521d4", "A1", nullLob); err != nil {
 		log.Fatal(err)
 	}
 }
