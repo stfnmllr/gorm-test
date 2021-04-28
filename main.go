@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"database/sql"
+
 	driver "github.com/SAP/go-hdb/driver"
 	"github.com/revolveyao/hdb"
 	"gorm.io/gorm"
@@ -20,7 +22,44 @@ type BC_MSG_LOG struct {
 	MSG_BYTES   driver.NullLob `gorm:"type:bytes"`
 }
 
+func initDB(dsn, schemaName, tableName string) {
+	db, err := sql.Open("hdb", dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	db.Exec(fmt.Sprintf("drop schema %s cascade", driver.Identifier(schemaName))) // ignore error
+
+	if _, err := db.Exec(fmt.Sprintf("create schema %s", driver.Identifier(schemaName))); err != nil {
+		log.Fatal(err)
+	}
+	if _, err := db.Exec(fmt.Sprintf("create table %s.%s (msg_id varchar(30), action_name varchar(30), msg_bytes blob)", driver.Identifier(schemaName), driver.Identifier(tableName))); err != nil {
+		log.Fatal(err)
+	}
+
+	stmt, err := db.Prepare(fmt.Sprintf("insert into %s.%s values(?, ?, ?)", schemaName, tableName))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	nullLob := &driver.NullLob{Lob: new(driver.Lob)}
+	nullLob.Lob.SetReader(bytes.NewBuffer([]byte("action 1")))
+
+	if _, err := stmt.Exec("1", "A1", nullLob); err != nil {
+		log.Fatal(err)
+	}
+}
+
+const (
+	schemaName = "SAPJAVA1"
+	tableName  = "BC_MSG_LOG"
+)
+
 func main() {
+	dsn := os.Getenv("GOHDBDSN")
+	initDB(dsn, schemaName, tableName)
+
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
@@ -31,7 +70,7 @@ func main() {
 
 	db, err := gorm.Open(hdb.New(hdb.Config{
 		DriverName: "hdb",
-		DSN:        os.Getenv("GOHDBDSN"),
+		DSN:        dsn,
 	}), &gorm.Config{
 		Logger: newLogger,
 		NamingStrategy: schema.NamingStrategy{
